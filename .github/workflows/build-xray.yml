@@ -1,26 +1,43 @@
-name: Build Xray (amd64)
+name: Build Xray (amd64 with patch)
 
 on:
   push:
     tags:
-      - 'v*'   # 当推送 tag（例如 v1.0.0）时触发
-  workflow_dispatch:  # 可手动触发
+      - 'v*'    # 推送 tag 时触发，例如 v1.0.0
+  workflow_dispatch:  # 手动触发
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up build environment
+      - name: Checkout this repo (contains patch file)
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y git golang make tar
+          sudo apt install -y git make tar wget patch
+
+      - name: Install Go 1.25
+        run: |
+          GO_VERSION=1.25.3
+          wget https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz
+          sudo rm -rf /usr/local/go
+          sudo tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
+          echo "/usr/local/go/bin" >> $GITHUB_PATH
+          go version
 
       - name: Clone Xray-core
         run: |
           git clone https://github.com/XTLS/Xray-core.git
           cd Xray-core
           git submodule update --init --recursive
+
+      - name: Apply patch
+        run: |
+          cd Xray-core
+          git apply ../xray.patch
 
       - name: Build for amd64
         working-directory: Xray-core
@@ -51,5 +68,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ./release/xray-linux-amd64.tar.gz
+          name: "Xray (Patched) ${{ github.ref_name }}"
+          body: |
+            🧩 Auto-built **Xray-core (patched)** for Linux amd64  
+            ✅ Built with Go 1.25.3  
+            ✅ Patch file applied: `xray.patch`
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
