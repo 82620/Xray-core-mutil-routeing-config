@@ -4,11 +4,15 @@ on:
   workflow_dispatch:  # 手动触发
 
 permissions:
-  contents: write
+  contents: write     # 允许创建 release
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    outputs:
+      tag_name: ${{ steps.gen_tag.outputs.tag_name }}
+      version: ${{ steps.get_version.outputs.version }}
 
     steps:
       - name: Checkout this repo (contains patch file)
@@ -34,6 +38,15 @@ jobs:
           version=$(curl -s https://api.github.com/repos/XTLS/Xray-core/releases/latest | jq -r .tag_name)
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "Latest Xray-core version: $version"
+
+      - name: Generate tag name
+        id: gen_tag
+        run: |
+          version="${{ steps.get_version.outputs.version }}"
+          date=$(date +%Y%m%d)
+          tag_name="xray-${version}-${date}"
+          echo "tag_name=$tag_name" >> $GITHUB_OUTPUT
+          echo "Generated tag name: $tag_name"
 
       - name: Clone Xray-core
         run: |
@@ -63,6 +76,9 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
@@ -70,16 +86,24 @@ jobs:
           name: xray-linux-amd64
           path: ./release
 
+      - name: Create Git Tag
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ needs.build.outputs.tag_name }}" -m "Auto build for ${{ needs.build.outputs.version }}"
+          git push origin "${{ needs.build.outputs.tag_name }}"
+
       - name: Create or Update Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: xray-${{ needs.build.outputs.version }}
+          tag_name: ${{ needs.build.outputs.tag_name }}
           name: "Xray Patched Build ${{ needs.build.outputs.version }}"
           body: |
-            🔧 Auto-built **Xray-core (patched)**  
+            🧩 Auto-built **Xray-core (patched)**  
             ✅ Source: XTLS/Xray-core ${{ needs.build.outputs.version }}  
-            ✅ Built with Go 1.25.3  
-            ✅ Patch applied: `xray.patch`
+            ✅ Built with Go 1.25  
+            ✅ Patch applied: `xray.patch`  
+            🕒 Build time: ${{ github.run_id }}
           files: ./release/*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
