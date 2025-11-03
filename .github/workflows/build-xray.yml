@@ -3,6 +3,9 @@ name: Build Xray (amd64 with patch & auto version)
 on:
   workflow_dispatch:  # 手动触发
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
