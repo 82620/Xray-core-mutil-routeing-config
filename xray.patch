@@ -1,0 +1,33 @@
+diff --git a/infra/conf/xray.go b/infra/conf/xray.go
+index e9cacc87..09d2ed69 100644
+--- a/infra/conf/xray.go
++++ b/infra/conf/xray.go
+@@ -382,9 +382,11 @@ func (c *Config) Override(o *Config, fn string) {
+ 	if o.LogConfig != nil {
+ 		c.LogConfig = o.LogConfig
+ 	}
++	/*
+ 	if o.RouterConfig != nil {
+ 		c.RouterConfig = o.RouterConfig
+ 	}
++	*/
+ 	if o.DNSConfig != nil {
+ 		c.DNSConfig = o.DNSConfig
+ 	}
+@@ -459,6 +461,16 @@ func (c *Config) Override(o *Config, fn string) {
+ 			c.OutboundConfigs = append(outboundPrepends, c.OutboundConfigs...)
+ 		}
+ 	}
++
++	// append routing rules
++	if o.RouterConfig != nil {
++		if len(o.RouterConfig.RuleList) > 0 {
++			for i := range o.RouterConfig.RuleList{
++				c.RouterConfig.RuleList = append(c.RouterConfig.RuleList, o.RouterConfig.RuleList[i])
++				errors.LogInfo(context.Background(), "[", fn, "] prepend rulelist with json: \n", string(o.RouterConfig.RuleList[i]))
++			}
++		}
++	}
+ }
+ 
+ // Build implements Buildable.
