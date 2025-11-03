@@ -1,10 +1,10 @@
-name: Build Xray (amd64 with patch & auto version)
+name: Build Xray
 
 on:
-  workflow_dispatch:  # 手动触发
+  workflow_dispatch:
 
 permissions:
-  contents: write     # 允许创建 release
+  contents: write   # 允许创建 release 和推送 tag
 
 jobs:
   build:
@@ -80,6 +80,11 @@ jobs:
       contents: write
 
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # ⬅️ 保证有 .git
+
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
@@ -99,10 +104,10 @@ jobs:
           tag_name: ${{ needs.build.outputs.tag_name }}
           name: "Xray Patched Build ${{ needs.build.outputs.version }}"
           body: |
-            🧩 Auto-built **Xray-core (patched)**  
-            ✅ Source: XTLS/Xray-core ${{ needs.build.outputs.version }}  
-            ✅ Built with Go 1.25  
-            ✅ Patch applied: `xray.patch`  
+            🧩 Auto-built **Xray-core (patched)**
+            ✅ Source: XTLS/Xray-core ${{ needs.build.outputs.version }}
+            ✅ Built with Go 1.25
+            ✅ Patch applied: `xray.patch`
             🕒 Build time: ${{ github.run_id }}
           files: ./release/*.tar.gz
         env:
